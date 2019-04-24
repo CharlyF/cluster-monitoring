@@ -1,14 +1,14 @@
 package app
 
 import (
+	"encoding/json"
 	"fmt"
+	"github.com/CharlyF/cluster-monitoring/pkg/aggregator"
 	"github.com/CharlyF/cluster-monitoring/pkg/controllers"
+	"github.com/CharlyF/cluster-monitoring/pkg/render"
 	"github.com/CharlyF/cluster-monitoring/util"
-	"github.com/DataDog/datadog-agent/pkg/util/docker"
-	"github.com/DataDog/datadog-agent/pkg/util/kubernetes/kubelet"
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/informers"
 	"os"
 	"os/signal"
 	"strings"
@@ -46,22 +46,16 @@ func start(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	dClient, err := docker.GetDockerUtil()
-	if err != nil {
-		return err
-	}
-	kClient, err := kubelet.GetKubeUtil()
-	if err != nil {
-		return err
-	}
-	factory := informers.NewSharedInformerFactory(apiCl, 0)
+	//dClient, err := docker.GetDockerUtil()
+	//if err != nil {
+	//	return err
+	//}
+
 	stopCh := make(chan struct{})
 	ctx := controllers.ControllerContext{
 		KubeClient: apiCl,
-		DockerClient: dClient,
-		KubeletClient: kClient,
+		//DockerClient: *dClient,
 		StopCh : stopCh,
-		InformerFactory:factory,
 	}
 	controllers.Start(ctx)
 
@@ -80,32 +74,74 @@ func data(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	cm, err := apiCl.CoreV1().ConfigMaps("default").Get("transactions", metav1.GetOptions{})
-	//fmt.Printf("transactions: %v",cm.Data)
-	mapper := make(map[string]string)
-	for key, value := range cm.Data {
-		ips := strings.Split(key, "-")
-		if len(ips) == 4 {
-			continue
-		} else {
-			// this is a metadata key
-			mapper[key] = value
-		}
+	tr := []aggregator.Transactions{}
+	mapper := make(map[string]aggregator.Data)
+	// Start with the metadata
+	cmMeta, err := apiCl.CoreV1().ConfigMaps("default").Get("metadata", metav1.GetOptions{})
+	if err != nil {
+		return err
 	}
+	//fmt.Printf("From Metadata CM %v \n", cmMeta.Data)
+	for k, v := range cmMeta.Data {
+		d := &aggregator.Data{}
+		err := json.Unmarshal([]byte(v), d)
+		if err != nil {
+			fmt.Errorf("Could not unmarshall vals for %s", k)
+			continue
+		}
+		mapper[k] = *d
+	}
+	//fmt.Printf("Mapper is %v \n", mapper)
+	// Fetch the connections
+	cm, err := apiCl.CoreV1().ConfigMaps("default").Get("transactions", metav1.GetOptions{})
+	//fmt.Printf("From Transactions CM %v \n", cm.Data)
 
 	for key, value := range cm.Data {
+		v := &aggregator.Values{}
 		ips := strings.Split(key, "-")
 		if len(ips) == 4 {
 			// this is transaction key.
+			err := json.Unmarshal([]byte(value), v)
+			if err != nil {
+				fmt.Errorf("could not unmarshall values")
+				continue
+			}
 			src := ips[0]
 			dest := ips[1]
-			fmt.Printf("Transaction between %s [%v] -> %s [%v]\n---\n%v\n---\n\n", src, mapper[src], dest,mapper[dest], value)
-		} else {
-			continue
-			mapper[key] = value
-			// this is a metadata key
-			fmt.Printf("IP: %s has the following metadata: %v \n", key, value)
+			t := aggregator.Transactions{
+				IpSrc: src,
+				IpDest: dest,
+				DataSrc: mapper[src],
+				DataDest: mapper[dest],
+				Val: *v,
+			}
+			tr = append(tr, t)
 		}
 	}
+	//fmt.Printf("Formatted %#v \n", tr)
+	stats := make(map[string]interface{})
+	stats["transactions"] = tr
+	byTr, err := json.Marshal(stats)
+
+	fmt.Errorf("Error marshalling list of transactions")
+	formattedStatus, err := render.FormatData(byTr)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf(formattedStatus)
 	return nil
 }
+
+/*
+map[172.31.34.73:{
+		"kubernetes":{
+			"name":"ebpf-fxgnd","uid":"1fdd80d1-59b1-11e9-b0bc-0a4ce296e9ba"},
+		"docker":null}
+	172.31.39.176:{
+		"kubernetes":{
+			"name":"colorteller-red-6d5f5849d6-nz6d7",
+			"uid":"ff79b6f6-49b3-11e9-b0bc-0a4ce296e9ba"},
+		"docker":null
+	}
+ */

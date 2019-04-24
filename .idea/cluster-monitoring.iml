@@ -5,11 +5,7 @@
       <option name="os" value="linux" />
       <option name="customFlags">
         <array>
-          <option value="linux" />
-          <option value="docker" />
           <option value="kubelet" />
-          <option value="kubeapiserver" />
-          <option value="secrets" />
           <option value="linux_bpf" />
           <option value="netgo" />
         </array>

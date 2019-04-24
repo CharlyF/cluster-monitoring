@@ -8,11 +8,10 @@ type Connections struct {
 // ConnectionStats stores statistics for a single connection
 //easyjson:json
 type ConnectionStats struct {
-
+	Pid   uint64 `json:"pid"`
 	// Source & Dest represented as a string to handle both IPv4 & IPv6
 	Source string `json:"source"`
 	Dest   string `json:"dest"`
-	SPort  uint16 `json:"sport"`
 	DPort  uint16 `json:"dport"`
 
 	MonotonicSentBytes uint64 `json:"monotonic_sent_bytes"`

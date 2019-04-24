@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/CharlyF/cluster-monitoring/pkg/aggregator"
-	"github.com/CharlyF/cluster-monitoring/util"
 	"github.com/orisano/uds"
 	"io/ioutil"
 	"net/http"
@@ -32,7 +31,7 @@ func NewSocketController(path string) (*SocketController, error) {
 
 func (s *SocketController) Run(stop chan struct{}) {
 	go s.processConnections(stop)
-	tick := time.NewTicker(2 * time.Second)
+	tick := time.NewTicker(5 * time.Second)
 	for {
 		select {
 		case <- tick.C:
@@ -59,7 +58,7 @@ func (s *SocketController) Run(stop chan struct{}) {
 }
 
 func (s *SocketController) processConnections(stop chan struct{}) {
-	fmt.Printf("Starting processConnections \n")
+	fmt.Printf("== Starting to process connections ==\n")
 	for {
 		select {
 
@@ -82,8 +81,12 @@ func (s *SocketController) processConnections(stop chan struct{}) {
 // Assumes that the IP is unique accross the cluster.
 func transactionSaver( co []ConnectionStats){
 	// Marshal Format
+	toSave := make(map[string]string)
 	for _, c := range co {
-		key := fmt.Sprintf("%s-%s-%d-%d", c.Source, c.Dest, c.SPort,c.DPort)
+		if c.Source == "127.0.0.1" && c.Dest == "127.0.0.1" {
+			continue
+		}
+		key := fmt.Sprintf("%s-%s-%d-%d", c.Source, c.Dest, c.Pid,c.DPort)
 		a := aggregator.Values{
 			MonotonicSentBytes:c.MonotonicSentBytes,
 			MonotonicRecvBytes: c.MonotonicRecvBytes,
@@ -93,8 +96,9 @@ func transactionSaver( co []ConnectionStats){
 			fmt.Errorf(err.Error())
 			continue
 		}
-		fmt.Printf("Caching: %s: %s \n", key, string(byteA))
-
-		util.Cache.Add(key, string(byteA), 0)
+		//fmt.Printf("Processing: %s: %s \n", key, string(byteA))
+		toSave[key] =  string(byteA)
+		//util.Cache.Add(key, string(byteA), 0)
 	}
+	Save(toSave)
 }

@@ -1,0 +1,41 @@
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  labels:
+    run: deploy
+  name: deploy
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      run: deploy
+  template:
+    metadata:
+      labels:
+        run: deploy
+    spec:
+      containers:
+      - command:
+        - sleep
+        - "3600"
+        env:
+        - name: HOSTNAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: spec.nodeName
+        - name: SOCKET_PATH
+          value: /network/var/run/network-tracer.sock
+        image: charlyyfon/ebpf:metadata
+        imagePullPolicy: Always
+        name: deploy
+        volumeMounts:
+        - mountPath: /network/var/run
+          name: network-var-run
+      serviceAccount: datadog-agent
+      serviceAccountName: datadog-agent
+      volumes:
+      - hostPath:
+          path: /network/var/run
+          type: DirectoryOrCreate
+        name: network-var-run

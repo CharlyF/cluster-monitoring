@@ -1,0 +1,56 @@
+{{ range $transaction := .transactions}}
+
+=========== Transaction ===========
+
+------------ Metatada -------------
+
+        {{ printDashes $transaction.ipsrc "-"}}
+Source: {{ $transaction.ipsrc }}
+        {{ printDashes $transaction.ipsrc "-" -}}
+{{- range $ks, $vs := $transaction.datadrc -}}
+    {{ if (eq $ks "kubernetes") -}}
+{{- if . }}
+container metadata:
+    {{- range $name, $tags := $vs }}
+    - {{ $name }}: {{ $tags }}
+    {{- end -}}
+{{- end -}}
+    {{ if or (eq $ks "service") (eq $ks "node") -}}
+{{- if .}}
+{{$ks}} metadata:
+    {{- range $name, $tags := $vs }}
+    - {{ $name }}: {{ $tags }}
+    {{- end -}}
+{{- end -}}
+    {{- end -}}
+{{- end -}}
+{{- end }}
+
+        {{ printDashes $transaction.ipdest "-"}}
+Dest:   {{ $transaction.ipdest}}
+        {{ printDashes $transaction.ipdest "-" -}}
+{{- range $kd, $vd := $transaction.datadest -}}
+    {{ if (eq $kd "kubernetes") -}}
+{{- if . }}
+container metadata:
+    {{- range $name, $tags := $vd }}
+    - {{ $name }}: {{ $tags }}
+    {{- end -}}
+{{- end -}}
+    {{- end -}}
+    {{ if or (eq $kd "service") (eq $kd "node") -}}
+{{- if . }}
+{{$kd}} metadata:
+    {{- range $name, $tags := $vd }}
+    - {{ $name }}: {{ $tags }}
+    {{- end -}}
+{{- end -}}
+    {{- end -}}
+{{- end }}
+
+------------- Metrics -------------
+{{ range $metric, $v := $transaction.values -}}
+* {{ $metric }} : {{humanize $v }}
+{{ end }}
+{{- end }}
+

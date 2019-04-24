@@ -107,7 +107,7 @@ func main() {
 		"family": 0,
 		"net_ns": 4026532528,
 		"source": "172.17.0.2",
-		"dest": "172.17.0.4",
+		"dest": "10.96.0.1",
 		"sport": 60839,
 		"dport": 53,
 		"direction": 2,

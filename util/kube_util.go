@@ -9,17 +9,18 @@ import (
 
 func GetKubeClient() (kubernetes.Interface, error) {
 	var err error
-
-	kubeconfig := os.Getenv("KUBECONFIG")
-	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
-	if err != nil {
-		panic(err.Error())
+	if os.Getenv("remote_collector") == "true" {
+		kubeconfig := os.Getenv("KUBECONFIG")
+		config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+		if err != nil {
+			panic(err.Error())
+		}
+		clientset, err := kubernetes.NewForConfig(config)
+		if err != nil {
+			panic(err.Error())
+		}
+		return clientset, nil
 	}
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		panic(err.Error())
-	}
-	return clientset, nil
 
 	var clientConfig *rest.Config
 	clientConfig, err = rest.InClusterConfig()

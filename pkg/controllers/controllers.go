@@ -2,25 +2,20 @@ package controllers
 
 import (
 	"fmt"
-	"github.com/DataDog/datadog-agent/pkg/util/docker"
-	"github.com/DataDog/datadog-agent/pkg/util/kubernetes/kubelet"
-	"k8s.io/client-go/informers"
+
 	"k8s.io/client-go/kubernetes"
 	"os"
 )
 
 type ControllerContext struct {
-	InformerFactory informers.SharedInformerFactory
 	KubeClient          kubernetes.Interface
-	DockerClient        *docker.DockerUtil
-	KubeletClient       *kubelet.KubeUtil
 	StopCh              chan struct{}
 }
 
 var controllerCatalog = map[string]controllerFuncs{
-	//"cluster-metadata": {
-	//	startMetadataController,
-	//},
+	"cluster-metadata": {
+		startMetadataController,
+	},
 	"node-metadata": {
 		start: nodeMetadataController,
 	},
@@ -41,22 +36,21 @@ type controllerFuncs struct {
 func Start(ctx ControllerContext) error {
 	for name, cntrlFuncs := range controllerCatalog {
 		err := cntrlFuncs.start(ctx)
-		fmt.Printf("starting %s \n", name)
+		fmt.Printf("|| Starting %s ||\n", name)
 		if err != nil {
 			fmt.Errorf("Error starting %s: %s", name, err.Error())
 			return err
 		}
 	}
-	ctx.InformerFactory.Start(ctx.StopCh)
 	return nil
 }
 
 func startMetadataController(ctx ControllerContext) error {
-	podCtrl, err := NewPodController(ctx.KubeClient, ctx.InformerFactory.Core().V1().Pods())
+	svcCtrl, err := NewSvcController(ctx.KubeClient)
 	if err != nil {
 		return err
 	}
-	go podCtrl.Run(ctx.StopCh)
+	go svcCtrl.Run(ctx.StopCh)
 	return nil
 }
 

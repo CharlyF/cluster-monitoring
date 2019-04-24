@@ -65,12 +65,29 @@ We watch the services
 
 ### Aggregator
 
-- 
+-
 
 ### Storage
 
--
+- 2 configmaps
 
+ - `transactions` keep track of the transatctions seen on each nodes
+ - `metadata` keeps the metadata for all pods on each nodes
+
+`transactions`
+Keep a key value record of all the transactions.
+key is `ip_source-ip_dest-port_src-port_dest` and value contains the metrics of the datagram.
+e.g. `monotonic_sent_bytes`
+As the app is running on all nodes, they all add the metadata of the containers living on their nodes.
+
+`metadata` is filled by all apps as well, the key is the ip of the pod and the value is the metadata coming from different sources.
+- Docker's API
+- Kubelet (in our case)
+- APIServer for services metadata.
+
+The Configmap is used as an example of bad storage implementation.
+As writes are concurrent, an update can be overriden.
+A proper implementation would be to use a proper store with the ability to Lock.
 
 ## Limitations
 
