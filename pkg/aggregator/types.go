@@ -47,6 +47,6 @@ type Values struct {
 	MonotonicRecvBytes uint64 `json:"monotonic_recv_bytes"`
 	//LastRecvBytes      uint64 `json:"last_recv_bytes"`
 	//
-	//MonotonicRetransmits uint32 `json:"monotonic_retransmits"`
+	MonotonicRetransmits uint32 `json:"monotonic_retransmits"`
 	//LastRetransmits      uint32 `json:"last_retransmits"`
 }

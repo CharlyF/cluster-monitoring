@@ -1,22 +1,17 @@
 apiVersion: extensions/v1beta1
-kind: Deployment
+kind: DaemonSet
 metadata:
   labels:
     run: deploy
-  name: deploy
+  name: network-aggregator
   namespace: default
 spec:
-  replicas: 1
   selector:
     matchLabels:
       run: deploy
-  strategy:
-    rollingUpdate:
-      maxSurge: 25%
-      maxUnavailable: 25%
-    type: RollingUpdate
   template:
     metadata:
+      creationTimestamp: null
       labels:
         run: deploy
     spec:
@@ -25,26 +20,28 @@ spec:
         - sleep
         - "36000"
         env:
+        - name: HOSTNAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: spec.nodeName
         - name: SOCKET_PATH
           value: /network/var/run/network-tracer.sock
         image: charlyyfon/ebpf:metadata
-        imagePullPolicy: IfNotPresent
-        name: deploy
+        imagePullPolicy: Always
+        name: network-aggregator
         resources: {}
         volumeMounts:
         - mountPath: /network/var/run
           name: network-var-run
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      securityContext: {}
+      serviceAccount: datadog-agent
       serviceAccountName: datadog-agent
       terminationGracePeriodSeconds: 30
       volumes:
-      - name: network-var-run
-        hostPath:
+      - hostPath:
           path: /network/var/run
           type: DirectoryOrCreate
----
-# use the DirectoryOrCreate in the network tracer as well.
-#     volumes:
-#      - name: network-var-run
-#        hostPath:
-#          path: /network/var/run
-#          type: DirectoryOrCreate
+        name: network-var-run

@@ -90,6 +90,7 @@ func transactionSaver( co []ConnectionStats){
 		a := aggregator.Values{
 			MonotonicSentBytes:c.MonotonicSentBytes,
 			MonotonicRecvBytes: c.MonotonicRecvBytes,
+			MonotonicRetransmits: c.MonotonicRetransmits,
 		}
 		byteA, err :=json.Marshal(a)
 		if err != nil{
